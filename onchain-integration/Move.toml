@@ -1,0 +1,14 @@
+[package]
+name = 'hippo-agg-integration'
+version = '1.0.0'
+
+[dependencies.AptosFramework]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'mainnet_deployment'
+subdir = 'aptos-move/framework/aptos-framework'
+
+[dependencies]
+HippoAggregator = { local = "../" }
+
+[addresses]
+sample = "a6b693f810898d238d68a05084f478ddb5e75d79209b99edad285ac80eb5cab8"

@@ -1,0 +1,10 @@
+[package]
+name = "HippoAggregator"
+version = "0.0.0"
+
+[dependencies]
+
+
+[addresses]
+hippo_aggregator = "89576037b3cc0b89645ea393a47787bb348272c76d6941c574b053672b848039"
+
