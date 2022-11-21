@@ -2,7 +2,10 @@
 name = "HippoAggregator"
 version = "0.0.0"
 
-[dependencies]
+[dependencies.AptosFramework]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'ede36dd00d7c3ba6b86a153b5ddb5da82924fc7f'
+subdir = 'aptos-move/framework/aptos-framework'
 
 
 [addresses]

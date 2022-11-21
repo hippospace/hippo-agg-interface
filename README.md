@@ -9,3 +9,6 @@ Currently supports:
 - Obric
 - Pancake
 - Pontem
+
+See Example in this [README](onchain-integration/README.md) for how to integrate with hippo-aggregator
+

@@ -1,2 +1,5 @@
 .idea
 onchain-integration/build
+build
+onchain-integration/typescript/dist
+onchain-integration/typescript/node_modules
