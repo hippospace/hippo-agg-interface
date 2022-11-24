@@ -92,7 +92,7 @@ const swapAndTransfer = async (
     const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
     const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
 
-    console.log("Loading best quote...");
+    console.log("Getting best quote local...");
     const quote = await agg.getBestQuote(inputAmt, xInfo, yInfo);
     if (!quote) {
         console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
@@ -124,7 +124,7 @@ const swapLocalRoute = async (
     const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
     const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
 
-    console.log("Loading quotes local...");
+    console.log("Getting quotes local...");
     const quotes = await agg.getQuotes(inputAmt, xInfo, yInfo);
     if (quotes.length === 0) {
         console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
@@ -132,7 +132,7 @@ const swapLocalRoute = async (
     }
     const routeSelected = quotes[routeIdxNumber];
     printQuote(routeSelected)
-    console.log("Make swap pay load...")
+    console.log("Make swap payload...")
     const payload = routeSelected.route.makeSwapPayload(inputAmt,0);
     console.log("Sending tx...");
     await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
@@ -157,7 +157,7 @@ const swapApiRoute = async (
     const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
     const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
 
-    console.log("Fetching quotes api...");
+    console.log("Fetching quotes from api...");
     const result = await agg.requestQuotesViaAPI(inputAmt, xInfo, yInfo);
     if (result.allRoutesCount === 0) {
         console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
@@ -191,13 +191,14 @@ const swapWithFees= async (
     toSymbol: string,
     inputUiAmt: string,
     feeTo: string,
+    feeBips: string,
     simulation: string,
     maxGas: string
 ) => {
     const { client, account } = readConfig(program);
     const inputAmt = parseFloat(inputUiAmt);
     const feeToHex = new HexString(feeTo)
-    const feeBips = 0.001 // 0.1 %
+    const feeBipsNumber = parseFloat(feeBips) // 0.1 %
     const isSimulation = simulation == "true"
 
     // use pools load from onchain
@@ -213,7 +214,7 @@ const swapWithFees= async (
         return;
     }
     printQuote(quote)
-    const payload = quote.route.makeSwapWithFeesPayload(inputAmt, 0, feeToHex, feeBips)
+    const payload = quote.route.makeSwapWithFeesPayload(inputAmt, 0, feeToHex, feeBipsNumber)
 
     console.log("Sending tx...");
     await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
@@ -236,8 +237,7 @@ const swapWithFixedOutput= async (
     const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
     const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
 
-    console.log("Fetching quotes api...");
-
+    console.log("Getting best quote with fixed output local...");
     const quote = await agg.getBestQuoteWithFixedOutput(outputAmt, xInfo, yInfo);
     if (!quote) {
         console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
@@ -250,7 +250,6 @@ const swapWithFixedOutput= async (
     console.log("Sending tx...");
     await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
 };
-
 
 ```
 
