@@ -242,7 +242,7 @@ program
  * @param fromSymbol
  * @param toSymbol
  * @param inputUiAmt
- * @param feeTo your account that get swap fees,
+ * @param feeToAddress your account that get swap fees,
  *              should have coin store of output coin,
  *              you can create coin store use https://github.com/hippospace/aptos-coin-list
  * @param feeBips
@@ -255,15 +255,15 @@ const swapWithFees= async (
     fromSymbol: string,
     toSymbol: string,
     inputUiAmt: string,
-    feeTo: string,
+    feeToAddress: string,
     feeBips: string,
     simulation: string,
     maxGas: string
 ) => {
     const { client, account } = readConfig(program);
     const inputAmt = parseFloat(inputUiAmt);
-    const feeToHex = new HexString(feeTo)
-    const feeBipsNumber = parseFloat(feeBips) // 0.1 %
+    const feeToAddressHex = new HexString(feeToAddress)
+    const feeBipsNumber = parseFloat(feeBips)
     const isSimulation = simulation == "true"
 
     // use pools load from onchain
@@ -279,7 +279,7 @@ const swapWithFees= async (
         return;
     }
     printQuote(quote)
-    const payload = quote.route.makeSwapWithFeesPayload(inputAmt, 0, feeToHex, feeBipsNumber)
+    const payload = quote.route.makeSwapWithFeesPayload(inputAmt, 0, feeToAddressHex, feeBipsNumber)
 
     console.log("Sending tx...");
     await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
@@ -290,7 +290,7 @@ program
     .argument('<fromSymbol>')
     .argument('<toSymbol>')
     .argument('<inputUiAmt>')
-    .argument('<feeTo>')
+    .argument('<feeToAddress>')
     .argument('[feeBips]','', "0.002")
     .argument('[simulation]','', "true")
     .argument('[maxGas]', '', '40000')

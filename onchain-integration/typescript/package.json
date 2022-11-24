@@ -4,7 +4,8 @@
   "scripts": {
     "build": "rm -rf dist; tsc -p tsconfig.json",
     "cli": "node dist/cli.js",
-    "test-sample": "node dist/cli.js swap-and-transfer USDC APT 0.1 a6a3ebdf06e519b5fd6bb4d3c3cb5c45e5590c9351f03ad6265a107f532adce6 -c ../../../.aptos/config.yaml"
+    "test-sample": "node dist/cli.js swap-and-transfer USDC APT 0.1 a6a3ebdf06e519b5fd6bb4d3c3cb5c45e5590c9351f03ad6265a107f532adce6 -c ../../../.aptos/config.yaml",
+    "debug-sample": "ts-node src/cli.ts swap-and-transfer USDC APT 0.1 a6a3ebdf06e519b5fd6bb4d3c3cb5c45e5590c9351f03ad6265a107f532adce6 -c ../../../.aptos/config.yaml"
   },
   "main": "dist/index.js",
 

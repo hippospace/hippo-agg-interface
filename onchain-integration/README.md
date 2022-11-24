@@ -69,7 +69,7 @@ This sample here demonstrates how to integrate with hippo-aggregator on-chain
 
 ```
 
-#Sample code at `typescript/src/cli.ts`:
+#Onchain integration sample code at `typescript/src/cli.ts`:
 
 ```typescript
 
@@ -104,7 +104,58 @@ const swapAndTransfer = async (
     console.log("Sending tx...");
     await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
 }
+```
 
+The sample TS code invokes an onchain function, which uses the aggregator to perform a swap, and then deposit the output
+coin to a separate address.
+
+```move
+public entry fun swap_and_transfer<
+    X, Y, Z, OutCoin, E1, E2, E3
+>(
+    sender: &signer,
+    // parameters for aggregator swap
+    num_steps: u8,
+    first_dex_type: u8,
+    first_pool_type: u64,
+    first_is_x_to_y: bool, // first trade uses normal order
+    second_dex_type: u8,
+    second_pool_type: u64,
+    second_is_x_to_y: bool, // second trade uses normal order
+    third_dex_type: u8,
+    third_pool_type: u64,
+    third_is_x_to_y: bool, // second trade uses normal order
+    x_in: u64,
+    // address to send output to
+    target_address: address,
+) {
+    let coin_x = coin::withdraw<X>(sender, x_in);
+    // invoke aggregator
+    let (x_remain, y_remain, z_remain, coin_out) = swap_direct<X, Y, Z, OutCoin, E1, E2, E3>(
+        num_steps,
+        first_dex_type,
+        first_pool_type,
+        first_is_x_to_y,
+        second_dex_type,
+        second_pool_type,
+        second_is_x_to_y,
+        third_dex_type,
+        third_pool_type,
+        third_is_x_to_y,
+        coin_x
+    );
+
+    // deal with output
+    check_and_deposit_opt(sender, x_remain);
+    check_and_deposit_opt(sender, y_remain);
+    check_and_deposit_opt(sender, z_remain);
+    coin::deposit(target_address, coin_out);
+}
+```
+
+#Other samples code at `typescript/src/cli.ts` 
+
+```typescript
 const swapLocalRoute = async (
     fromSymbol: string,
     toSymbol: string,
@@ -190,15 +241,15 @@ const swapWithFees= async (
     fromSymbol: string,
     toSymbol: string,
     inputUiAmt: string,
-    feeTo: string,
+    feeToAddress: string,
     feeBips: string,
     simulation: string,
     maxGas: string
 ) => {
     const { client, account } = readConfig(program);
     const inputAmt = parseFloat(inputUiAmt);
-    const feeToHex = new HexString(feeTo)
-    const feeBipsNumber = parseFloat(feeBips) // 0.1 %
+    const feeToAddressHex = new HexString(feeToAddress)
+    const feeBipsNumber = parseFloat(feeBips)
     const isSimulation = simulation == "true"
 
     // use pools load from onchain
@@ -214,7 +265,7 @@ const swapWithFees= async (
         return;
     }
     printQuote(quote)
-    const payload = quote.route.makeSwapWithFeesPayload(inputAmt, 0, feeToHex, feeBipsNumber)
+    const payload = quote.route.makeSwapWithFeesPayload(inputAmt, 0, feeToAddressHex, feeBipsNumber)
 
     console.log("Sending tx...");
     await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
@@ -250,54 +301,6 @@ const swapWithFixedOutput= async (
     console.log("Sending tx...");
     await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
 };
-
-```
-
-The sample TS code invokes an onchain function, which uses the aggregator to perform a swap, and then deposit the output
-coin to a separate address.
-
-```move
-public entry fun swap_and_transfer<
-    X, Y, Z, OutCoin, E1, E2, E3
->(
-    sender: &signer,
-    // parameters for aggregator swap
-    num_steps: u8,
-    first_dex_type: u8,
-    first_pool_type: u64,
-    first_is_x_to_y: bool, // first trade uses normal order
-    second_dex_type: u8,
-    second_pool_type: u64,
-    second_is_x_to_y: bool, // second trade uses normal order
-    third_dex_type: u8,
-    third_pool_type: u64,
-    third_is_x_to_y: bool, // second trade uses normal order
-    x_in: u64,
-    // address to send output to
-    target_address: address,
-) {
-    let coin_x = coin::withdraw<X>(sender, x_in);
-    // invoke aggregator
-    let (x_remain, y_remain, z_remain, coin_out) = swap_direct<X, Y, Z, OutCoin, E1, E2, E3>(
-        num_steps,
-        first_dex_type,
-        first_pool_type,
-        first_is_x_to_y,
-        second_dex_type,
-        second_pool_type,
-        second_is_x_to_y,
-        third_dex_type,
-        third_pool_type,
-        third_is_x_to_y,
-        coin_x
-    );
-
-    // deal with output
-    check_and_deposit_opt(sender, x_remain);
-    check_and_deposit_opt(sender, y_remain);
-    check_and_deposit_opt(sender, z_remain);
-    coin::deposit(target_address, coin_out);
-}
 ```
 
 #Test
