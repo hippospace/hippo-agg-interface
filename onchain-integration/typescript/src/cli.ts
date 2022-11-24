@@ -2,9 +2,10 @@ import {Command} from "commander";
 import * as fs from "fs";
 import * as yaml from "yaml";
 import {AptosAccount, AptosClient, HexString, TxnBuilderTypes, Types} from "aptos";
-import {App, CONFIGS, TradeAggregator, AggregatorTypes} from "@manahippo/hippo-sdk";
+import {App, CONFIGS, TradeAggregator, AggregatorTypes, MAINNET_CONFIG} from "@manahippo/hippo-sdk";
 import {getSimulationKeys, sendPayloadTx, simulatePayloadTx} from "@manahippo/move-to-ts";
 import { sample } from './src';
+import {RouteAndQuote} from "@manahippo/hippo-sdk/dist/aggregator/types";
 
 export const readConfig = (program:Command) => {
     const { config, profile } = program.opts();
@@ -40,6 +41,36 @@ export const readConfig = (program:Command) => {
     return { app, client, account, coinListAddress, netConf };
 };
 
+const sendPayloadTxLocal = async (
+    simulation:boolean,
+    client: AptosClient,
+    account: AptosAccount,
+    payload: TxnBuilderTypes.TransactionPayloadEntryFunction | Types.TransactionPayload_EntryFunctionPayload,
+    maxGas: string
+)=>{
+    if (simulation) {
+        const simResult = await simulatePayloadTx(
+            client,
+            getSimulationKeys(account),
+            payload as TxnBuilderTypes.TransactionPayloadEntryFunction,
+            { maxGasAmount: parseInt(maxGas) }
+        );
+        console.log(JSON.stringify(simResult, null, 2));
+    } else {
+        await sendPayloadTx(client, account, payload as TxnBuilderTypes.TransactionPayloadEntryFunction, {
+            maxGasAmount: parseInt(maxGas)
+        });
+    }
+}
+
+const printQuote = (quote:RouteAndQuote) => {
+    console.log('\n############################################');
+    quote.route.debugPrint();
+    console.log(`Input: ${quote.quote.inputUiAmt}`);
+    console.log(`Output: ${quote.quote.outputUiAmt}`);
+    console.log(`Price Impact: ${quote.quote.priceImpact}`);
+}
+
 const program = new Command();
 
 program
@@ -48,7 +79,7 @@ program
     .requiredOption('-c, --config <path>', 'path to your aptos config.yml (generated with "aptos init")')
     .option('-p, --profile <PROFILE>', 'aptos config profile to use', 'default')
 
-const makePayload = (
+const makeSwapAndTransferPayload = (
     route: AggregatorTypes.TradeRoute,
     inputUiAmt: number,
     toAddress: HexString,
@@ -83,35 +114,30 @@ const swapAndTransfer = async (
     inputUiAmt: string,
     toAddress: string,
     simulation: string,
-    routeIdx: string,
     maxGas: string
 )=>{
+
     const { netConf, account, client } = readConfig(program);
-    const agg = await TradeAggregator.create(client, netConf);
-    const xCoinInfos = agg.coinListClient.getCoinInfoBySymbol(fromSymbol);
-    const yCoinInfos = agg.coinListClient.getCoinInfoBySymbol(toSymbol);
     const inputAmt = parseFloat(inputUiAmt);
     const toAddressHex = new HexString(toAddress)
+    const isSimulation = simulation === "true"
+    // use hardcoded default pools
+    const agg = new TradeAggregator(client, netConf);
 
-    const quotes = await agg.getQuotes(inputAmt, xCoinInfos[0], yCoinInfos[0]);
-    if (quotes.length === 0) {
-        console.log('No route available');
+    const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
+    const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
+
+    console.log("Getting best quote local...");
+    const quote = await agg.getBestQuote(inputAmt, xInfo, yInfo);
+    if (!quote) {
+        console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
         return;
     }
-    const payload = makePayload(quotes[parseInt(routeIdx)].route,inputAmt, toAddressHex);
-    if (simulation === "true") {
-        const simResult = await simulatePayloadTx(
-            client,
-            getSimulationKeys(account),
-            payload as TxnBuilderTypes.TransactionPayloadEntryFunction,
-            { maxGasAmount: parseInt(maxGas) }
-        );
-        console.log(JSON.stringify(simResult, null, 2));
-    } else {
-        await sendPayloadTx(client, account, payload as TxnBuilderTypes.TransactionPayloadEntryFunction, {
-            maxGasAmount: parseInt(maxGas)
-        });
-    }
+    printQuote(quote)
+    console.log("Make swapAndTransfer Payload...")
+    const payload = makeSwapAndTransferPayload(quote.route, inputAmt, toAddressHex);
+    console.log("Sending tx...");
+    await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
 }
 
 program
@@ -121,8 +147,195 @@ program
     .argument('<inputUiAmt>')
     .argument('<toAddress>')
     .argument('[simulation]','', "true")
-    .argument('[routeIdx]', '', '0')
     .argument('[maxGas]', '', '40000')
     .action(swapAndTransfer);
+
+const swapLocalRoute = async (
+    fromSymbol: string,
+    toSymbol: string,
+    inputUiAmt: string,
+    simulation: string,
+    routeIdx: string,
+    maxGas: string
+) => {
+    const { client, account, netConf } = readConfig(program);
+    const inputAmt = parseFloat(inputUiAmt);
+    const isSimulation = simulation === "true"
+    const routeIdxNumber = parseInt(routeIdx)
+
+    // use pools load from onchain
+    const agg = await TradeAggregator.create(client, netConf)
+
+    const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
+    const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
+
+    console.log("Getting quotes local...");
+    const quotes = await agg.getQuotes(inputAmt, xInfo, yInfo);
+    if (quotes.length === 0) {
+        console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
+        return;
+    }
+    const routeSelected = quotes[routeIdxNumber];
+    printQuote(routeSelected)
+    console.log("Make swap payload...")
+    const payload = routeSelected.route.makeSwapPayload(inputAmt,0);
+    console.log("Sending tx...");
+    await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
+};
+
+program
+    .command("swap-local-route")
+    .argument('<fromSymbol>')
+    .argument('<toSymbol>')
+    .argument('<inputUiAmt>')
+    .argument('[simulation]','', "true")
+    .argument('[routeIdx]','', "0")
+    .argument('[maxGas]', '', '40000')
+    .action(swapLocalRoute);
+
+const swapApiRoute = async (
+    fromSymbol: string,
+    toSymbol: string,
+    inputUiAmt: string,
+    simulation: string,
+    routeIdx: string,
+    maxGas: string
+) => {
+    const { client, account } = readConfig(program);
+    const inputAmt = parseFloat(inputUiAmt);
+    const isSimulation = simulation == "true"
+    const routeIdxNumber = parseInt(routeIdx)
+
+    // use pools load from onchain
+    const agg = await TradeAggregator.create(client, MAINNET_CONFIG)
+
+    const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
+    const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
+
+    console.log("Fetching quotes from api...");
+    const result = await agg.requestQuotesViaAPI(inputAmt, xInfo, yInfo);
+    if (result.allRoutesCount === 0) {
+        console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
+        return;
+    }
+    console.log(`Fetched ${result.allRoutesCount} quotes`);
+
+    const routeSelected = result.routes[routeIdxNumber];
+    const payload = routeSelected.route.makePayload(inputAmt, 0)
+
+    console.log("Sending tx...");
+    await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
+};
+
+program
+    .command("swap-api-route")
+    .argument('<fromSymbol>')
+    .argument('<toSymbol>')
+    .argument('<inputUiAmt>')
+    .argument('[simulation]','', "true")
+    .argument('[routeIdx]','', "0")
+    .argument('[maxGas]', '', '40000')
+    .action(swapApiRoute);
+
+/**
+ *
+ * @param fromSymbol
+ * @param toSymbol
+ * @param inputUiAmt
+ * @param feeTo your account that get swap fees,
+ *              should have coin store of output coin,
+ *              you can create coin store use https://github.com/hippospace/aptos-coin-list
+ * @param feeBips
+ *              1. You will get half of this fee bips, and another half is to hippo account
+ *              2. You can not set it more than 0.003 (0.3 %)
+ * @param simulation
+ * @param maxGas
+ */
+const swapWithFees= async (
+    fromSymbol: string,
+    toSymbol: string,
+    inputUiAmt: string,
+    feeTo: string,
+    feeBips: string,
+    simulation: string,
+    maxGas: string
+) => {
+    const { client, account } = readConfig(program);
+    const inputAmt = parseFloat(inputUiAmt);
+    const feeToHex = new HexString(feeTo)
+    const feeBipsNumber = parseFloat(feeBips) // 0.1 %
+    const isSimulation = simulation == "true"
+
+    // use pools load from onchain
+    const agg = await TradeAggregator.create(client, MAINNET_CONFIG)
+
+    const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
+    const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
+
+    console.log("Fetching quotes api...");
+    const quote = await agg.getBestQuote(inputAmt, xInfo, yInfo);
+    if (!quote) {
+        console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
+        return;
+    }
+    printQuote(quote)
+    const payload = quote.route.makeSwapWithFeesPayload(inputAmt, 0, feeToHex, feeBipsNumber)
+
+    console.log("Sending tx...");
+    await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
+};
+
+program
+    .command("swap-with-fees")
+    .argument('<fromSymbol>')
+    .argument('<toSymbol>')
+    .argument('<inputUiAmt>')
+    .argument('<feeTo>')
+    .argument('[feeBips]','', "0.002")
+    .argument('[simulation]','', "true")
+    .argument('[maxGas]', '', '40000')
+    .action(swapWithFees);
+
+const swapWithFixedOutput= async (
+    fromSymbol: string,
+    toSymbol: string,
+    outputUiAmt: string,
+    simulation: string,
+    maxGas: string
+) => {
+    const { client, account } = readConfig(program);
+    const outputAmt = parseFloat(outputUiAmt);
+    const isSimulation = simulation == "true"
+
+    // use pools load from onchain
+    const agg = await TradeAggregator.create(client, MAINNET_CONFIG)
+
+    const xInfo = agg.coinListClient.getCoinInfoBySymbol(fromSymbol)[0];
+    const yInfo = agg.coinListClient.getCoinInfoBySymbol(toSymbol)[0];
+
+    console.log("Getting best quote with fixed output local...");
+    const quote = await agg.getBestQuoteWithFixedOutput(outputAmt, xInfo, yInfo);
+    if (!quote) {
+        console.log(`No quote from ${fromSymbol} to ${toSymbol}`);
+        return;
+    }
+    printQuote(quote)
+    const maxInputAmt = quote.quote.inputUiAmt * 1.05; // float up according to you
+    const payload = quote.route.makeFixedOutputPayload(outputAmt, maxInputAmt)
+
+    console.log("Sending tx...");
+    await sendPayloadTxLocal(isSimulation, client, account, payload, maxGas)
+};
+
+program
+    .command("swap-with-fixed-output")
+    .argument('<fromSymbol>')
+    .argument('<toSymbol>')
+    .argument('<outputUiAmt>')
+    .argument('[simulation]','', "true")
+    .argument('[maxGas]', '', '40000')
+    .action(swapWithFixedOutput);
+
+
 
 program.parse();

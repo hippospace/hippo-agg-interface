@@ -567,10 +567,10 @@
     commander "^9.3.0"
     yaml "^2.1.1"
 
-"@manahippo/hippo-sdk@^3.0.0":
-  version "3.0.15"
-  resolved "https://registry.yarnpkg.com/@manahippo/hippo-sdk/-/hippo-sdk-3.0.15.tgz#485f032688a2c4b3767e85c6bf827ddb68cfeee1"
-  integrity sha512-0WTdwzf0SHkaTBq4QLln5WIIjfIjk+Oa4naW0ucw99uV0rA6tpH+COsR8mlxSnCt4aQe1Pw42UBZfAXMM9Hepw==
+"@manahippo/hippo-sdk@^3.0.19":
+  version "3.0.19"
+  resolved "https://registry.yarnpkg.com/@manahippo/hippo-sdk/-/hippo-sdk-3.0.19.tgz#908c4b97202da573987a5997db2b3558dd96cc66"
+  integrity sha512-p7m53eUNqPsCIO3BDkyF3A1Idb8PHoH7wEhDayqzv90ZVI9Wpxwk00AsGAfHYzgem0e1m5pGPaqQLtTRKIA/sQ==
   dependencies:
     "@manahippo/coin-list" "2.0.3"
     "@manahippo/move-to-ts" "0.4.4"
@@ -580,7 +580,7 @@
     promise-throttle "1.1.2"
     yaml "^2.1.1"
 
-"@manahippo/move-to-ts@0.4.4", "@manahippo/move-to-ts@^0.4.2", "@manahippo/move-to-ts@^0.4.3":
+"@manahippo/move-to-ts@0.4.4", "@manahippo/move-to-ts@^0.4.2", "@manahippo/move-to-ts@^0.4.4":
   version "0.4.4"
   resolved "https://registry.yarnpkg.com/@manahippo/move-to-ts/-/move-to-ts-0.4.4.tgz#63aefe96f673a0665e38e14e1c39cb18f2d0420e"
   integrity sha512-8KqbHGisE+/wMgsDbiGb3NHus1Hb0Si0AoUI8XC+JcpiwVdfcREzui+RFmsNFNaod49W3Znc/gBuUxOq85+Hvw==
