@@ -9,5 +9,5 @@ subdir = 'aptos-move/framework/aptos-framework'
 
 
 [addresses]
-hippo_aggregator = "89576037b3cc0b89645ea393a47787bb348272c76d6941c574b053672b848039"
+hippo_aggregator = "0x890812a6bbe27dd59188ade3bbdbe40a544e6e104319b7ebc6617d3eb947ac07"
 
