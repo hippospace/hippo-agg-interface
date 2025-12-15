@@ -1,5 +1,7 @@
 # hippo-aggregator
 
+New Release for Solana, Hippo Labs on Solana
+
 Currently supports:
 - Animeswap
 - Aptoswap
